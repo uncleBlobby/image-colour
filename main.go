@@ -173,3 +173,71 @@ func readConfigTemplate(colors []string, wallPaperPath string) string {
 
 	return b.String()
 }
+
+func getRandomWallpaperPath() (string, error) {
+	//TODO:
+	//function should error (and re-run automatically) if we select an incompatible wallpaper
+	//only jpg, jpeg, and png are supported at this time
+
+	dir, err := os.ReadDir(WALLPAPER_DIR)
+	if err != nil {
+		log.Printf("Error reading image directory: %s", err)
+		return "", err
+	}
+
+	randInd := rand.Intn(len(dir))
+
+	fileName := fmt.Sprintf("%s", WALLPAPER_DIR+dir[randInd].Name())
+
+	return fileName, nil
+}
+
+func decodeWallpaperForColorAnalysis(wallPaperPath string) (image.Image, error) {
+	reader, err := os.Open(wallPaperPath)
+	if err != nil {
+		log.Printf("Error reading image file: %s", err)
+		return nil, err
+	}
+
+	m, _, err := image.Decode(reader)
+	if err != nil {
+		log.Printf("Error decoding wallpaper image file: %s", err)
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func getColorMap(m image.Image) map[color.Color]int {
+	colorMap := map[color.Color]int{}
+
+	bounds := m.Bounds()
+
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			colorMap[m.At(x, y)] += 1
+		}
+	}
+
+	return colorMap
+}
+
+func sortColorMap(cm map[color.Color]int) []color.Color {
+	colors := make([]color.Color, 0, len(cm))
+	for color := range cm {
+		colors = append(colors, color)
+	}
+	sort.Slice(colors, func(i, j int) bool { return cm[colors[i]] > cm[colors[j]] })
+
+	return colors
+}
+
+func getTopXColors(allColors []color.Color, count int) []color.Color {
+	topColors := []color.Color{}
+
+	for i := 0; i < count; i++ {
+		topColors = append(topColors, allColors[i])
+	}
+
+	return topColors
+}
