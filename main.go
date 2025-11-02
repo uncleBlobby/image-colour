@@ -34,10 +34,6 @@ func main() {
 
 	fileName := fmt.Sprintf("%s", WALLPAPER_DIR+dir[randInd].Name())
 
-	// for _, f := range dir {
-	// 	fmt.Println(f.Info())
-	// }
-
 	reader, err := os.Open(fileName)
 	if err != nil {
 		log.Printf("Error reading image file: %s", err)
@@ -57,13 +53,8 @@ func main() {
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			colorMap[m.At(x, y)] += 1
-			// fmt.Println(m.At(x, y))
 		}
 	}
-
-	// for k, c := range colorMap {
-	// 	fmt.Printf("%v - %d\n", k, c)
-	// }
 
 	colors := make([]color.Color, 0, len(colorMap))
 	for color := range colorMap {
@@ -106,9 +97,6 @@ func main() {
 				img.Set(x, y, outColors[4])
 			}
 
-			// if (x + y) < len(outColors) {
-			// 	img.Set(x, y, outColors[x+y])
-			// }
 		}
 	}
 
@@ -167,6 +155,10 @@ func readConfigTemplate(colors []string) string {
 	b := strings.Builder{}
 
 	for scanner.Scan() {
+
+		// TODO:
+		// add replace template string for wallpaper file in config template
+		// replace with path to file chosen by go above
 		if scanner.Text() != REPLACE_TEMPLATE {
 			fmt.Println(scanner.Text())
 			b.WriteString(scanner.Text())
