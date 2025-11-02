@@ -20,6 +20,7 @@ const WALLPAPER_DIR = "/home/dustin/Downloads/aesthetic-wallpapers/images/"
 const CONFIG_FILE_TEMPLATE = "/home/dustin/.config/wallpaper/hyprland.conf.template"
 const CONFIG_FILE_GENERATED = "/home/dustin/.config/wallpaper/hyprland.conf.gen"
 const REPLACE_TEMPLATE = "{{TEMPLATE_COLOUR}}"
+const WALLPAPER_FILEPATH_TEMPLATE = "{{TEMPLATE_WALLPAPER_FILEPATH}}"
 
 func main() {
 	fmt.Println("hello, image-colors!")
@@ -138,12 +139,12 @@ func main() {
 	f, _ := os.Create("outColors.png")
 	png.Encode(f, img)
 
-	genConfig := readConfigTemplate(colorStrings)
+	genConfig := readConfigTemplate(colorStrings, fileName)
 
 	f3.WriteString(genConfig)
 }
 
-func readConfigTemplate(colors []string) string {
+func readConfigTemplate(colors []string, wallPaperPath string) string {
 	data, err := os.Open(CONFIG_FILE_TEMPLATE)
 	if err != nil {
 		log.Printf("Error reading config file template: %s", err)
@@ -156,19 +157,18 @@ func readConfigTemplate(colors []string) string {
 
 	for scanner.Scan() {
 
-		// TODO:
-		// add replace template string for wallpaper file in config template
-		// replace with path to file chosen by go above
-		if scanner.Text() != REPLACE_TEMPLATE {
-			fmt.Println(scanner.Text())
-			b.WriteString(scanner.Text())
-			b.WriteString("\n")
-		} else {
-			fmt.Println(colors[repCount])
+		if scanner.Text() == REPLACE_TEMPLATE {
 			b.WriteString(colors[repCount])
 			b.WriteString("\n")
 			repCount += 1
+		} else if scanner.Text() == WALLPAPER_FILEPATH_TEMPLATE {
+			b.WriteString(fmt.Sprintf("$wallpaper_path = %s", wallPaperPath))
+			b.WriteString("\n")
+		} else {
+			b.WriteString(scanner.Text())
+			b.WriteString("\n")
 		}
+
 	}
 
 	return b.String()
