@@ -25,47 +25,63 @@ const WALLPAPER_FILEPATH_TEMPLATE = "{{TEMPLATE_WALLPAPER_FILEPATH}}"
 func main() {
 	fmt.Println("hello, image-colors!")
 
-	dir, err := os.ReadDir(WALLPAPER_DIR)
+	// dir, err := os.ReadDir(WALLPAPER_DIR)
+	// if err != nil {
+	// 	log.Printf("Error reading image directory: %s", err)
+	// 	os.Exit(1)
+	// }
+
+	// randInd := rand.Intn(len(dir))
+
+	// fileName := fmt.Sprintf("%s", WALLPAPER_DIR+dir[randInd].Name())
+
+	fileName, err := getRandomWallpaperPath()
 	if err != nil {
-		log.Printf("Error reading image directory: %s", err)
+		log.Printf("[FAILED]: %s", err)
 		os.Exit(1)
 	}
 
-	randInd := rand.Intn(len(dir))
-
-	fileName := fmt.Sprintf("%s", WALLPAPER_DIR+dir[randInd].Name())
-
-	reader, err := os.Open(fileName)
+	m, err := decodeWallpaperForColorAnalysis(fileName)
 	if err != nil {
-		log.Printf("Error reading image file: %s", err)
+		log.Printf("[FAILED]: %s", err)
 		os.Exit(1)
 	}
 
-	m, _, err := image.Decode(reader)
-	if err != nil {
-		log.Printf("Error decoding image file: %s", err)
-		os.Exit(1)
-	}
+	colorMap := getColorMap(m)
 
-	bounds := m.Bounds()
+	sortedColors := sortColorMap(colorMap)
 
-	colorMap := map[color.Color]int{}
+	// reader, err := os.Open(fileName)
+	// if err != nil {
+	// 	log.Printf("Error reading image file: %s", err)
+	// 	os.Exit(1)
+	// }
 
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			colorMap[m.At(x, y)] += 1
-		}
-	}
+	// m, _, err := image.Decode(reader)
+	// if err != nil {
+	// 	log.Printf("Error decoding image file: %s", err)
+	// 	os.Exit(1)
+	// }
 
-	colors := make([]color.Color, 0, len(colorMap))
-	for color := range colorMap {
-		colors = append(colors, color)
-	}
-	sort.Slice(colors, func(i, j int) bool { return colorMap[colors[i]] > colorMap[colors[j]] })
+	// bounds := m.Bounds()
+
+	// colorMap := map[color.Color]int{}
+
+	// for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+	// 	for x := bounds.Min.X; x < bounds.Max.X; x++ {
+	// 		colorMap[m.At(x, y)] += 1
+	// 	}
+	// }
+
+	// colors := make([]color.Color, 0, len(colorMap))
+	// for color := range colorMap {
+	// 	colors = append(colors, color)
+	// }
+	// sort.Slice(colors, func(i, j int) bool { return colorMap[colors[i]] > colorMap[colors[j]] })
 
 	outColors := []color.Color{}
 
-	for rank, col := range colors {
+	for rank, col := range sortedColors {
 		if rank < 1000 {
 			fmt.Printf("%v - %d\n", col, colorMap[col])
 			outColors = append(outColors, col)
