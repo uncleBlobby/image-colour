@@ -50,16 +50,9 @@ func main() {
 		log.Printf("Error writing palette PNG file: %s", err)
 	}
 
-	// f3, err := os.Create(CONFIG_FILE_GENERATED)
-	// if err != nil {
-	// 	log.Printf("Error generating config file: %s", err)
-	// }
-
 	colorStrings := getColorStringsForConfigTemplate(top5Colours)
 
 	genConfig := readConfigTemplate(colorStrings, fileName)
-
-	// f3.WriteString(genConfig)
 
 	err = writeGeneratedConfigFile(genConfig)
 	if err != nil {
