@@ -79,47 +79,26 @@ func main() {
 	// }
 	// sort.Slice(colors, func(i, j int) bool { return colorMap[colors[i]] > colorMap[colors[j]] })
 
-	outColors := []color.Color{}
+	// outColors := []color.Color{}
 
-	for rank, col := range sortedColors {
-		if rank < 1000 {
-			fmt.Printf("%v - %d\n", col, colorMap[col])
-			outColors = append(outColors, col)
-		}
-	}
+	// for rank, col := range sortedColors {
+	// 	if rank < 1000 {
+	// 		fmt.Printf("%v - %d\n", col, colorMap[col])
+	// 		outColors = append(outColors, col)
+	// 	}
+	// }
 
-	width := 200
-	height := 1000
+	top5Colours := getTopXColors(sortedColors, 5)
 
-	upLeft := image.Point{0, 0}
-	lowRight := image.Point{width, height}
+	img := createPalettePNG(top5Colours)
+	// f2, err := os.Create("/home/dustin/.config/wallpaper/cols.wp")
+	// if err != nil {
+	// 	log.Printf("Error writing cols.wp: %s", err)
+	// }
 
-	img := image.NewRGBA(image.Rectangle{upLeft, lowRight})
-
-	for x := 0; x < width; x++ {
-		for y := 0; y < height; y++ {
-			if y < 200 {
-				img.Set(x, y, outColors[0])
-			}
-			if y >= 200 && y < 400 {
-				img.Set(x, y, outColors[1])
-			}
-			if y >= 400 && y < 600 {
-				img.Set(x, y, outColors[2])
-			}
-			if y >= 600 && y < 800 {
-				img.Set(x, y, outColors[3])
-			}
-			if y >= 800 && y < 1000 {
-				img.Set(x, y, outColors[4])
-			}
-
-		}
-	}
-
-	f2, err := os.Create("/home/dustin/.config/wallpaper/cols.wp")
+	err = writePalettePNGFile(img)
 	if err != nil {
-		log.Printf("Error writing cols.wp: %s", err)
+		log.Printf("Error writing palette PNG file: %s", err)
 	}
 
 	f3, err := os.Create(CONFIG_FILE_GENERATED)
@@ -127,33 +106,33 @@ func main() {
 		log.Printf("Error generating config file: %s", err)
 	}
 
-	colorStrings := []string{}
+	colorStrings := getColorStringsForConfigTemplate(top5Colours)
 
-	for ind, c := range outColors {
-		if ind < 5 {
-			fmt.Println(c)
-			// fmt.Printf("%f\n", c)
-			v1, v2, v3, v4 := c.RGBA()
-			s1 := hex.EncodeToString([]byte{byte(v1)})
+	// for ind, c := range outColors {
+	// 	if ind < 5 {
+	// 		fmt.Println(c)
+	// 		// fmt.Printf("%f\n", c)
+	// 		v1, v2, v3, v4 := c.RGBA()
+	// 		s1 := hex.EncodeToString([]byte{byte(v1)})
 
-			s2 := hex.EncodeToString([]byte{byte(v2)})
-			s3 := hex.EncodeToString([]byte{byte(v3)})
-			s4 := hex.EncodeToString([]byte{byte(v4)})
+	// 		s2 := hex.EncodeToString([]byte{byte(v2)})
+	// 		s3 := hex.EncodeToString([]byte{byte(v3)})
+	// 		s4 := hex.EncodeToString([]byte{byte(v4)})
 
-			hexString := fmt.Sprintf("%s%s%s%s", s1, s2, s3, s4)
-			fmt.Printf("%s%s%s%s\n", s1, s2, s3, s4)
+	// 		hexString := fmt.Sprintf("%s%s%s%s", s1, s2, s3, s4)
+	// 		fmt.Printf("%s%s%s%s\n", s1, s2, s3, s4)
 
-			colString := fmt.Sprintf("$color%d = rgba(%s)\n", ind, hexString)
-			colorStrings = append(colorStrings, colString)
-			f2.WriteString(colString)
-			// f2.WriteString(hexString)
-			// f2.WriteString("\n")
-		}
+	// 		colString := fmt.Sprintf("$color%d = rgba(%s)\n", ind, hexString)
+	// 		colorStrings = append(colorStrings, colString)
+	// 		f2.WriteString(colString)
+	// 		// f2.WriteString(hexString)
+	// 		// f2.WriteString("\n")
+	// 	}
 
-	}
+	// }
 
-	f, _ := os.Create("outColors.png")
-	png.Encode(f, img)
+	// f, _ := os.Create("outColors.png")
+	// png.Encode(f, img)
 
 	genConfig := readConfigTemplate(colorStrings, fileName)
 
@@ -201,14 +180,18 @@ func getRandomWallpaperPath() (string, error) {
 		return "", err
 	}
 
+	log.Printf("[INFO]: Reading wallpaper directory: %s", WALLPAPER_DIR)
+
 	randInd := rand.Intn(len(dir))
 
 	fileName := fmt.Sprintf("%s", WALLPAPER_DIR+dir[randInd].Name())
 
+	log.Printf("[INFO]: Selected random wallpaper: %s", fileName)
 	return fileName, nil
 }
 
 func decodeWallpaperForColorAnalysis(wallPaperPath string) (image.Image, error) {
+	log.Printf("[INFO]: Decoding wallpaper for color analysis...")
 	reader, err := os.Open(wallPaperPath)
 	if err != nil {
 		log.Printf("Error reading image file: %s", err)
@@ -225,6 +208,7 @@ func decodeWallpaperForColorAnalysis(wallPaperPath string) (image.Image, error) 
 }
 
 func getColorMap(m image.Image) map[color.Color]int {
+	log.Printf("[INFO]: Preparing color map...")
 	colorMap := map[color.Color]int{}
 
 	bounds := m.Bounds()
@@ -256,4 +240,81 @@ func getTopXColors(allColors []color.Color, count int) []color.Color {
 	}
 
 	return topColors
+}
+
+func createPalettePNG(top5Colors []color.Color) *image.RGBA {
+	log.Printf("[INFO]: Creating palette swatch file...")
+	width := 200
+	height := 1000
+
+	upLeft := image.Point{0, 0}
+	lowRight := image.Point{width, height}
+
+	img := image.NewRGBA(image.Rectangle{upLeft, lowRight})
+
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			if y < 200 {
+				img.Set(x, y, top5Colors[0])
+			}
+			if y >= 200 && y < 400 {
+				img.Set(x, y, top5Colors[1])
+			}
+			if y >= 400 && y < 600 {
+				img.Set(x, y, top5Colors[2])
+			}
+			if y >= 600 && y < 800 {
+				img.Set(x, y, top5Colors[3])
+			}
+			if y >= 800 && y < 1000 {
+				img.Set(x, y, top5Colors[4])
+			}
+
+		}
+	}
+
+	return img
+}
+
+func writePalettePNGFile(data *image.RGBA) error {
+	//TODO:
+	// accept string parameter for wallpaper filename and save palette with a name that makes sense
+	// which directory to write palette info? is it even useful to save the swatch?
+	// command line option maybe
+
+	f, err := os.Create("outColors.png")
+	if err != nil {
+		log.Printf("Error creating palette PNG file: %s", err)
+		return err
+	}
+
+	err = png.Encode(f, data)
+	if err != nil {
+		log.Printf("Error encoding palette PNG file: %s", err)
+	}
+	log.Printf("[INFO]: Encoding palette PNG file...")
+	return nil
+}
+
+func getColorStringsForConfigTemplate(colors []color.Color) []string {
+	colorStrings := []string{}
+	for ind, c := range colors {
+		// NOTE: maximum 5 color selection (arbitrary limit?)
+		if ind < 5 {
+			v1, v2, v3, v4 := c.RGBA()
+
+			s1 := hex.EncodeToString([]byte{byte(v1)})
+			s2 := hex.EncodeToString([]byte{byte(v2)})
+			s3 := hex.EncodeToString([]byte{byte(v3)})
+			s4 := hex.EncodeToString([]byte{byte(v4)})
+
+			hexString := fmt.Sprintf("%s%s%s%s", s1, s2, s3, s4)
+			// fmt.Printf("%s%s%s%s\n", s1, s2, s3, s4)
+
+			colString := fmt.Sprintf("$color%d = rgba(%s)\n", ind, hexString)
+			colorStrings = append(colorStrings, colString)
+		}
+	}
+	log.Printf("[INFO]: Formatting hex colors for config generator...")
+	return colorStrings
 }
