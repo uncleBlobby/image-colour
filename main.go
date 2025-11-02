@@ -12,6 +12,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/user"
 	"sort"
 	"strings"
 )
@@ -21,9 +22,11 @@ const CONFIG_FILE_TEMPLATE = "/home/dustin/.config/wallpaper/hyprland.conf.templ
 const CONFIG_FILE_GENERATED = "/home/dustin/.config/wallpaper/hyprland.conf.gen"
 const REPLACE_TEMPLATE = "{{TEMPLATE_COLOUR}}"
 const WALLPAPER_FILEPATH_TEMPLATE = "{{TEMPLATE_WALLPAPER_FILEPATH}}"
+const DEFAULT_HYPRLAND_CONFIG_DIR = "/.config/hypr/"
 
 func main() {
 	fmt.Println("hello, image-colors!")
+	getUserDefaultHyprlandConfig()
 
 	fileName, err := getRandomWallpaperPath()
 	if err != nil {
@@ -257,4 +260,26 @@ func getColorStringsForConfigTemplate(colors []color.Color) []string {
 	}
 	log.Printf("[INFO]: Formatting hex colors for config generator...")
 	return colorStrings
+}
+
+// read default location for existing hyprland config (if available)
+// we DO NOT want to mess with a user's existing config (hotkeys, autostarts, etc)
+
+func getUserDefaultHyprlandConfig() {
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Printf("Error getting current user: %s", err)
+		return
+	}
+
+	fmt.Println("currentUser: ", currentUser.HomeDir)
+	hyprConfigPath := fmt.Sprintf("%s%s%s", currentUser.HomeDir, DEFAULT_HYPRLAND_CONFIG_DIR, "hyprland.conf")
+	fmt.Printf("Default Hyprland Config Path: %s\n", hyprConfigPath)
+
+	f, err := os.Open(hyprConfigPath)
+	if err != nil {
+		log.Printf("Error opening default config file: %s", err)
+	}
+
+	// f.Read()
 }
