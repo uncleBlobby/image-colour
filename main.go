@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"embed"
+	_ "embed"
 	"encoding/hex"
 	"fmt"
 	"image"
@@ -17,6 +19,9 @@ import (
 	"strings"
 )
 
+//go:embed static/*
+var emb embed.FS
+
 const WALLPAPER_DIR = "/home/dustin/Downloads/aesthetic-wallpapers/images/"
 const CONFIG_FILE_TEMPLATE = "/home/dustin/.config/wallpaper/hyprland.conf.template"
 const CONFIG_FILE_GENERATED = "/home/dustin/.config/wallpaper/hyprland.conf.gen"
@@ -26,7 +31,8 @@ const DEFAULT_HYPRLAND_CONFIG_DIR = "/.config/hypr/"
 
 func main() {
 	fmt.Println("hello, image-colors!")
-	getUserDefaultHyprlandConfig()
+	existingConfig := getUserDefaultHyprlandConfig()
+	customBorders := getBorderSettings()
 
 	fileName, err := getRandomWallpaperPath()
 	if err != nil {
@@ -55,6 +61,11 @@ func main() {
 
 	colorStrings := getColorStringsForConfigTemplate(top5Colours)
 
+	newConf := appendColorSettingsToUserConf(colorStrings, existingConfig)
+	newConf = appendBorderSettingsToUserconf(customBorders, newConf)
+
+	debugPrintGeneratedUserConf(newConf)
+
 	genConfig := readConfigTemplate(colorStrings, fileName)
 
 	err = writeGeneratedConfigFile(genConfig)
@@ -63,6 +74,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	writeOutGeneratedConfigToDefaultConfigPath(newConf)
 }
 
 func writeGeneratedConfigFile(cfgContent string) error {
@@ -265,11 +277,11 @@ func getColorStringsForConfigTemplate(colors []color.Color) []string {
 // read default location for existing hyprland config (if available)
 // we DO NOT want to mess with a user's existing config (hotkeys, autostarts, etc)
 
-func getUserDefaultHyprlandConfig() {
+func getUserDefaultHyprlandConfig() string {
 	currentUser, err := user.Current()
 	if err != nil {
 		log.Printf("Error getting current user: %s", err)
-		return
+		return ""
 	}
 
 	fmt.Println("currentUser: ", currentUser.HomeDir)
@@ -281,5 +293,94 @@ func getUserDefaultHyprlandConfig() {
 		log.Printf("Error opening default config file: %s", err)
 	}
 
+	scanner := bufio.NewScanner(f)
+	b := strings.Builder{}
+	for scanner.Scan() {
+		b.WriteString(scanner.Text())
+		b.WriteString("\n")
+	}
+
+	tempOutPath := fmt.Sprintf("%s%s%s", currentUser.HomeDir, DEFAULT_HYPRLAND_CONFIG_DIR, "hyprland.user.bak")
+
+	f2, err := os.Create(tempOutPath)
+	if err != nil {
+		log.Printf("Error creating backup user config file: %s", err)
+		os.Exit(1)
+	}
+
+	log.Printf("[INFO]: backing up original user config: %s", tempOutPath)
+	f2.WriteString(b.String())
 	// f.Read()
+
+	return b.String()
+}
+
+func getBorderSettings() string {
+
+	bSet, err := emb.ReadFile("static/borderSettings.conf")
+	if err != nil {
+		log.Printf("Error reading border settings: %s", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(string(bSet))
+	return string(bSet)
+}
+
+func appendColorSettingsToUserConf(colorStrings []string, userConf string) string {
+
+	b := strings.Builder{}
+
+	b.WriteString(userConf)
+	b.WriteString("\n")
+	b.WriteString("################################################\n")
+	b.WriteString("# AUTOMATICALLY GENERATED COLORS\n")
+	b.WriteString("################################################\n")
+	b.WriteString("\n")
+	for _, cs := range colorStrings {
+		b.WriteString(cs)
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+
+	return b.String()
+}
+
+func appendBorderSettingsToUserconf(bSettings string, userConf string) string {
+
+	b := strings.Builder{}
+
+	b.WriteString(userConf)
+	b.WriteString("\n")
+	b.WriteString("################################################\n")
+	b.WriteString("# AUTOMATICALLY GENERATED BORDERS\n")
+	b.WriteString("################################################\n")
+	b.WriteString("\n")
+	b.WriteString(bSettings)
+	b.WriteString("\n")
+
+	return b.String()
+}
+
+func debugPrintGeneratedUserConf(userConf string) {
+	fmt.Println(userConf)
+}
+
+func writeOutGeneratedConfigToDefaultConfigPath(userConf string) {
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Printf("Error getting current user: %s", err)
+	}
+
+	hyprConfigPath := fmt.Sprintf("%s%s%s", currentUser.HomeDir, DEFAULT_HYPRLAND_CONFIG_DIR, "hyprland.conf")
+	f, err := os.Create(hyprConfigPath)
+	if err != nil {
+		log.Printf("Error creating new config file: %s", err)
+		os.Exit(1)
+	}
+
+	f.WriteString(userConf)
+
+	return
 }
